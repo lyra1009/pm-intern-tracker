@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>27届PM实习生阶段跟踪看板</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{--primary:#6366f1;--primary-light:#eef2ff;--green:#10b981;--yellow:#f59e0b;--red:#ef4444;--gray-50:#f9fafb;--gray-100:#f3f4f6;--gray-200:#e5e7eb;--gray-300:#d1d5db;--gray-500:#6b7280;--gray-700:#374151;--gray-800:#1f2937;--shadow:0 2px 8px rgba(0,0,0,0.08);--radius:10px;--radius-lg:14px;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Noto Sans SC',sans-serif;background:#f0f2f5;color:var(--gray-800);min-height:100vh;line-height:1.5;padding-bottom:60px;}
+.alert-banner{background:#fef3c7;border-bottom:2px solid var(--yellow);padding:10px 32px;font-size:13px;display:none;align-items:center;gap:10px;}
+.alert-banner.show{display:flex;}.alert-banner .banner-text{flex:1;}
+.topbar{background:white;border-bottom:1px solid var(--gray-200);padding:14px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 1px 3px rgba(0,0,0,0.04);}
+.topbar .logo{font-size:20px;font-weight:700;color:var(--primary);}
+.topbar .meta{font-size:13px;color:var(--gray-500);}
+.toolbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.tabs{display:flex;background:white;border-bottom:1px solid var(--gray-200);padding:0 32px;overflow-x:auto;}
+.tab{padding:14px 24px;border:none;background:none;font-size:14px;font-weight:500;color:var(--gray-500);cursor:pointer;border-bottom:3px solid transparent;transition:all 0.2s;font-family:inherit;display:flex;align-items:center;gap:6px;white-space:nowrap;}
+.tab:hover{color:var(--primary);}.tab.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:600;}
+.tab .count{background:var(--red);color:white;font-size:11px;padding:1px 8px;border-radius:10px;display:none;}
+.content{display:none;padding:24px 32px;max-width:1600px;margin:0 auto;}.content.active{display:block;}
+.filter-bar{display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap;}
+.filter-bar input,.filter-bar select{padding:8px 14px;border:1px solid var(--gray-300);border-radius:8px;font-size:13px;font-family:inherit;background:white;}
+.filter-bar input{width:200px;}.filter-bar input:focus,.filter-bar select:focus{outline:none;border-color:var(--primary);}
+.result-hint{font-size:13px;color:var(--gray-500);margin-left:auto;}
+.overview-table{width:100%;border-collapse:collapse;background:white;border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow);font-size:13px;}
+.overview-table thead{background:var(--gray-50);}
+.overview-table th{padding:10px 12px;text-align:left;font-weight:600;color:var(--gray-500);font-size:11px;border-bottom:2px solid var(--gray-200);white-space:nowrap;cursor:pointer;}
+.overview-table th:hover{color:var(--primary);}
+.overview-table td{padding:9px 12px;border-bottom:1px solid var(--gray-100);vertical-align:middle;}
+.overview-table tbody tr{cursor:pointer;transition:background 0.15s;}
+.overview-table tbody tr:hover{background:var(--primary-light);}
+.overview-table tbody tr.expanded{background:var(--primary-light);border-left:3px solid var(--primary);}
+.overview-table tbody tr.risk-row{border-left:3px solid var(--yellow);}
+.stage-dots{display:flex;gap:4px;align-items:center;}
+.stage-dot{width:12px;height:12px;border-radius:50%;background:var(--gray-200);flex-shrink:0;}
+.stage-dot.green{background:var(--green);}.stage-dot.yellow{background:var(--yellow);}.stage-dot.red{background:var(--red);}
+.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;}
+.badge-success{background:#d1fae5;color:#065f46;}.badge-warning{background:#fef3c7;color:#92400e;}
+.badge-danger{background:#fee2e2;color:#991b1b;}.badge-info{background:#dbeafe;color:#1e40af;}
+.expand-row{display:none;}.expand-row.show{display:table-row;}
+.expand-row td{padding:0;background:var(--primary-light);border-bottom:2px solid var(--primary);}
+.expand-panel{padding:24px 32px;}
+.info-card{background:white;border-radius:var(--radius);padding:16px 20px;margin-bottom:14px;border:1px solid var(--gray-200);display:grid;grid-template-columns:repeat(4,1fr);gap:8px 20px;font-size:12px;}
+.info-card .info-item{display:flex;gap:4px;}
+.info-card .info-label{color:var(--gray-500);white-space:nowrap;}
+.info-card .info-value{color:var(--gray-800);font-weight:500;}
+.expand-panel .goals-box{background:white;border-radius:var(--radius);padding:14px 18px;margin-bottom:16px;font-size:13px;line-height:1.8;border:1px solid var(--gray-200);}
+.expand-panel .goals-title{font-weight:700;color:var(--gray-700);margin-bottom:4px;}
+.stage-timeline{display:grid;gap:0;position:relative;margin-bottom:16px;}
+.stage-timeline::before{content:'';position:absolute;top:12px;left:3%;right:3%;height:2px;background:var(--gray-200);z-index:0;}
+.stage-node{display:flex;flex-direction:column;align-items:center;position:relative;z-index:1;cursor:pointer;padding:0 2px;}
+.stage-dot-big{width:24px;height:24px;border-radius:50%;border:3px solid var(--gray-300);background:white;}
+.stage-node.green .stage-dot-big{background:var(--green);border-color:var(--green);}
+.stage-node.yellow .stage-dot-big{background:var(--yellow);border-color:var(--yellow);}
+.stage-node.red .stage-dot-big{background:var(--red);border-color:var(--red);}
+.stage-node .stage-label{font-size:10px;color:var(--gray-500);margin-top:6px;text-align:center;font-weight:500;line-height:1.2;}
+.stage-node.green .stage-label{color:var(--green);}.stage-node.yellow .stage-label{color:var(--yellow);}.stage-node.red .stage-label{color:var(--red);}
+.stage-node .stage-date{font-size:9px;color:var(--gray-400);margin-top:2px;}
+.stage-detail{margin-top:12px;padding:14px 18px;background:white;border-radius:var(--radius);border:1px solid var(--gray-200);}
+.stage-detail .sd-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px;}
+.stage-detail .sd-title{font-weight:700;font-size:14px;}.stage-detail .sd-date{font-size:12px;color:var(--gray-500);}
+.stage-status-btns{display:flex;gap:4px;flex-wrap:wrap;}
+.ss-btn{padding:3px 10px;border:1px solid var(--gray-300);border-radius:14px;font-size:11px;cursor:pointer;background:white;font-family:inherit;transition:all 0.15s;}
+.ss-btn:hover{border-color:var(--primary);}
+.ss-btn.sel-green{background:var(--green);color:white;border-color:var(--green);}
+.ss-btn.sel-yellow{background:var(--yellow);color:white;border-color:var(--yellow);}
+.ss-btn.sel-red{background:var(--red);color:white;border-color:var(--red);}
+.stage-detail textarea{width:100%;border:1px solid var(--gray-200);border-radius:6px;padding:8px 12px;font-size:13px;font-family:inherit;resize:vertical;min-height:56px;margin-top:8px;}
+.stage-detail textarea:focus{outline:none;border-color:var(--primary);}
+.sd-actions{display:flex;gap:6px;margin-top:8px;}
+.btn{display:inline-flex;align-items:center;gap:4px;padding:7px 16px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;font-family:inherit;white-space:nowrap;}
+.btn-primary{background:var(--primary);color:white;}.btn-primary:hover{opacity:0.9;}
+.btn-success{background:var(--green);color:white;}.btn-success:hover{opacity:0.9;}
+.btn-outline{background:white;color:var(--primary);border:1px solid var(--primary);}.btn-outline:hover{background:var(--primary-light);}
+.btn-sm{padding:4px 12px;font-size:11px;}.btn-xs{padding:2px 8px;font-size:10px;}
+.risk-table{width:100%;border-collapse:collapse;background:white;border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow);}
+.risk-table th{background:var(--gray-50);padding:12px 16px;text-align:left;font-weight:600;font-size:11px;color:var(--gray-500);border-bottom:2px solid var(--gray-200);}
+.risk-table td{padding:12px 16px;font-size:13px;border-bottom:1px solid var(--gray-100);}
+.risk-table tr:hover{background:var(--gray-50);}
+.risk-high{background:#fee2e2;color:#991b1b;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+.risk-mid{background:#fef3c7;color:#92400e;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+.settings-bar{background:var(--gray-50);border-radius:var(--radius);padding:16px 20px;margin-bottom:20px;display:none;}
+.settings-bar.show{display:block;}
+.settings-bar h4{font-size:14px;margin-bottom:12px;color:var(--gray-700);}
+.settings-stages{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.stage-edit{padding:6px 12px;background:white;border:1px solid var(--gray-300);border-radius:8px;font-size:12px;display:flex;align-items:center;gap:8px;}
+.stage-edit input{width:80px;border:1px solid var(--gray-300);border-radius:4px;padding:3px 6px;font-size:12px;}
+.stage-edit input[type=number]{width:50px;}
+.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;}
+.modal-overlay.show{display:flex;}
+.modal{background:white;border-radius:var(--radius-lg);padding:28px;max-width:750px;width:90%;box-shadow:var(--shadow);max-height:85vh;overflow-y:auto;}
+.modal.wide{max-width:800px;}.modal h3{font-size:18px;margin-bottom:16px;}
+.modal .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;}
+.modal .form-grid .form-row-full{grid-column:1/-1;}
+.form-row{margin-bottom:0;}.form-row label{display:block;font-size:13px;font-weight:600;color:var(--gray-700);margin-bottom:4px;}
+.form-row input,.form-row select,.form-row textarea{width:100%;padding:8px 12px;border:1px solid var(--gray-300);border-radius:8px;font-size:13px;font-family:inherit;}
+.form-row input:focus,.form-row select:focus,.form-row textarea:focus{outline:none;border-color:var(--primary);}
+.form-row textarea{min-height:60px;resize:vertical;}
+.btn-row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;}
+.report-box{background:white;border-radius:var(--radius);border:1px solid var(--gray-200);padding:20px;max-height:55vh;overflow-y:auto;font-size:13px;}
+.report-box h2{color:var(--primary);border-bottom:2px solid var(--primary);padding-bottom:6px;margin-bottom:12px;font-size:18px;}
+.report-box h3{font-size:14px;margin:14px 0 6px;}
+.report-box table{width:100%;border-collapse:collapse;margin:8px 0;}
+.report-box th,.report-box td{padding:6px 10px;border:1px solid var(--gray-200);font-size:12px;}
+.report-box th{background:var(--gray-50);}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--gray-800);color:white;padding:10px 22px;border-radius:8px;font-size:13px;z-index:2000;opacity:0;transform:translateY(20px);transition:all 0.3s;}
+.toast.show{opacity:1;transform:translateY(0);}
+.empty{text-align:center;padding:60px;color:var(--gray-400);}
+.sort-arrow{font-size:10px;}
+.light-legend{display:flex;gap:16px;align-items:center;margin-bottom:12px;font-size:11px;color:var(--gray-500);}
+.light-legend span{display:flex;align-items:center;gap:4px;}
+.light-dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+.light-dot.blank{background:var(--gray-200);}.light-dot.green{background:var(--green);}.light-dot.yellow{background:var(--yellow);}.light-dot.red{background:var(--red);}
+.detail-section{margin-top:14px;padding-top:14px;border-top:1px dashed var(--gray-200);}
+.detail-section .section-title{font-size:12px;font-weight:700;color:var(--gray-500);margin-bottom:8px;}
+@media (max-width:768px){
+    .topbar,.tabs,.content{padding-left:12px;padding-right:12px;}
+    .topbar{flex-wrap:wrap;gap:8px;}
+    .stage-timeline{grid-template-columns:repeat(3,1fr);gap:10px 0;}
+    .stage-timeline::before{display:none;}
+    .overview-table{font-size:11px;}.overview-table th,.overview-table td{padding:8px 6px;}
+    .info-card{grid-template-columns:repeat(2,1fr);}
+    .modal .form-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<script src="auth.js"></script>
+<script>checkPageAuth();</script>
+<div class="alert-banner" id="alertBanner"><span>!!</span><span class="banner-text" id="bannerText"></span><button class="banner-close" onclick="document.getElementById('alertBanner').classList.remove('show')">&times;</button></div>
+<div class="topbar"><div class="logo">27届PM实习生阶段跟踪</div><span class="meta" id="headerStats"></span>
+<div class="toolbar"><button class="btn btn-primary btn-sm" onclick="openInternModal()">+ 实习生</button><button class="btn btn-outline btn-sm" onclick="importExcel()">导入</button><button class="btn btn-outline btn-sm" onclick="downloadTemplate()" style="color:var(--green);border-color:var(--green);">下载模板</button><button class="btn btn-outline btn-sm" onclick="exportExcel()">导出</button><button class="btn btn-outline btn-sm" onclick="exportDataJSON()">导出JSON</button><button class="btn btn-outline btn-sm" onclick="generateReport()">生成汇报</button><button class="btn btn-outline btn-sm" onclick="generatePopoMsg()">POPO推送</button><button class="btn btn-success btn-sm" onclick="exportArchive()">归档导出</button><button class="btn btn-outline btn-sm" onclick="clearAllData()" style="color:var(--red);border-color:var(--red);">清空</button><button class="btn btn-outline btn-sm" onclick="toggleSettings()">阶段设置</button></div></div>
+<div class="tabs" id="navTabs"><button class="tab active" data-tab="tab-overview">全员总览</button><button class="tab" data-tab="tab-risk">风险预警 <span class="count" id="riskCount">0</span></button><button class="tab" data-tab="tab-weekly-report">每周异常汇总</button></div>
+<div class="content active" id="tab-overview"><div class="light-legend"><span><span class="light-dot blank"></span>未完成</span><span><span class="light-dot green"></span>绿灯</span><span><span class="light-dot yellow"></span>黄灯</span><span><span class="light-dot red"></span>红灯</span></div>
+<div class="settings-bar" id="settingsBar"><h4>自定义阶段</h4><div class="settings-stages" id="settingsStages"></div><div style="display:flex;gap:8px;"><button class="btn btn-primary btn-xs" onclick="addStage()">+ 添加</button><button class="btn btn-outline btn-xs" onclick="resetStages()">恢复默认</button></div></div>
+<div class="filter-bar">
+    <input type="text" id="searchInput" placeholder="搜索姓名/学校/专业/部门..." oninput="renderOverview()">
+    <select id="filterStage" onchange="renderOverview()"><option value="">全部阶段</option></select>
+    <select id="filterDept" onchange="renderOverview()"><option value="">全部部门</option></select>
+    <select id="filterMentor" onchange="renderOverview()"><option value="">全部导师</option></select>
+    <select id="filterEducation" onchange="renderOverview()"><option value="">全部学历</option><option value="本科">本科</option><option value="硕士">硕士</option><option value="博士">博士</option></select>
+    <select id="filterStatus" onchange="renderOverview()"><option value="">全部状态</option><option value="正常">正常</option><option value="有风险">有风险</option></select>
+    <select id="filterLight" onchange="renderOverview()"><option value="">全部灯号</option><option value="green">绿灯</option><option value="yellow">黄灯</option><option value="red">红灯</option></select>
+    <span class="result-hint" id="resultHint"></span>
+</div>
+<div style="overflow-x:auto;">
+<table class="overview-table"><thead><tr>
+    <th style="width:30px;"></th>
+    <th onclick="sortInterns('name')">姓名 <span class="sort-arrow">^</span></th>
+    <th>二级部门</th><th>三级部门</th>
+    <th onclick="sortInterns('mentor')">导师 <span class="sort-arrow">^</span></th>
+    <th>主管</th>
+    <th onclick="sortInterns('onboard')">入职 <span class="sort-arrow">^</span></th>
+    <th onclick="sortInterns('endDate')">预计结束 <span class="sort-arrow">^</span></th>
+    <th>阶段</th><th>状态</th><th>灯号</th>
+</tr></thead><tbody id="overviewBody"></tbody></table>
+</div></div>
+<div class="content" id="tab-risk"><div id="riskContent"></div></div>
+<div class="content" id="tab-weekly-report"><div id="weeklyReportContent"></div></div>
+
+<div class="modal-overlay" id="internModal"><div class="modal">
+    <h3 id="internModalTitle">添加实习生</h3>
+    <div class="form-grid">
+        <div class="form-row"><label>姓名 *</label><input id="f_name"></div>
+        <div class="form-row"><label>性别</label><select id="f_gender"><option value="">请选择</option><option value="男">男</option><option value="女">女</option></select></div>
+        <div class="form-row"><label>学校</label><input id="f_school"></div>
+        <div class="form-row"><label>学历</label><select id="f_education"><option value="">请选择</option><option value="本科">本科</option><option value="硕士">硕士</option><option value="博士">博士</option><option value="其他">其他</option></select></div>
+        <div class="form-row"><label>专业</label><input id="f_major"></div>
+        <div class="form-row"><label>入职日期 *</label><input type="date" id="f_onboard"></div>
+        <div class="form-row"><label>预计结束日期</label><input type="date" id="f_endDate"></div>
+        <div class="form-row"><label>一级部门</label><input id="f_dept"></div>
+        <div class="form-row"><label>二级部门</label><input id="f_dept2"></div>
+        <div class="form-row"><label>三级部门</label><input id="f_dept3"></div>
+        <div class="form-row"><label>主管</label><input id="f_supervisor" list="supervisorList"><datalist id="supervisorList"></datalist></div>
+        <div class="form-row"><label>导师</label><input id="f_mentor" list="mentorList"><datalist id="mentorList"></datalist></div>
+        <div class="form-row form-row-full"><label>所属项目</label><input id="f_project"></div>
+        <div class="form-row form-row-full"><label>实习目标</label><textarea id="f_goals" placeholder="请输入实习目标，每行一个目标..."></textarea></div>
+        <div class="form-row form-row-full"><label>整体状态</label><select id="f_status"><option value="正常">正常</option><option value="有风险">有风险</option></select></div>
+    </div>
+    <input type="hidden" id="f_editId">
+    <div class="btn-row"><button class="btn btn-outline btn-sm" onclick="closeModal('internModal')">取消</button><button class="btn btn-primary btn-sm" onclick="saveIntern()">保存</button></div>
+</div></div>
+
+<div class="modal-overlay" id="reportModal"><div class="modal wide"><h3>实习生管理汇报报告</h3><div class="report-box" id="reportContent"></div><div class="btn-row"><button class="btn btn-outline btn-sm" onclick="closeModal('reportModal')">关闭</button><button class="btn btn-primary btn-sm" onclick="downloadReport()">下载</button></div></div></div>
+<div class="modal-overlay" id="popoModal"><div class="modal wide"><h3>POPO推送消息</h3><textarea id="popoMsg" style="width:100%;height:240px;font-family:monospace;font-size:12px;border:1px solid var(--gray-300);border-radius:8px;padding:12px;" readonly></textarea><div class="btn-row"><button class="btn btn-outline btn-sm" onclick="closeModal('popoModal')">关闭</button><button class="btn btn-primary btn-sm" onclick="copyPopoMsg()">复制</button></div></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+var DEFAULT_STAGES=[{key:'d0',label:'入职当天',days:0},{key:'w1',label:'第1周',days:7},{key:'w2',label:'第2周',days:14},{key:'w3',label:'第3周',days:21},{key:'w4',label:'第4周',days:28},{key:'mid',label:'中期Review',days:60},{key:'w6',label:'第6周',days:42},{key:'w8',label:'第8周',days:56},{key:'def',label:'转正答辩',days:100}];
+var STAGES_KEY='pm_custom_stages',STAGE_DEFS=loadStages(),STORAGE_KEY='pm_stage_v6',data,sortField='onboard',sortAsc=true,expandedId=null,selectedStage={};
+function loadStages(){try{var s=localStorage.getItem(STAGES_KEY);if(s){var d=JSON.parse(s);if(d.length)return d;}}catch(e){}return JSON.parse(JSON.stringify(DEFAULT_STAGES));}
+function saveStages(){localStorage.setItem(STAGES_KEY,JSON.stringify(STAGE_DEFS));}
+function resetStages(){STAGE_DEFS=JSON.parse(JSON.stringify(DEFAULT_STAGES));saveStages();renderAll();toast('已恢复默认');}
+function addStage(){STAGE_DEFS.push({key:'s'+Date.now(),label:'新阶段',days:STAGE_DEFS[STAGE_DEFS.length-1].days+7});saveStages();renderSettings();}
+function stageDate(onboard,days){if(!onboard)return'';var d=new Date(onboard);d.setDate(d.getDate()+days);return d.toISOString().split('T')[0];}
+function getCurrentStageKey(intern){if(!intern.onboard)return STAGE_DEFS[0].key;var e=Math.floor((new Date()-new Date(intern.onboard))/86400000);for(var i=STAGE_DEFS.length-1;i>=0;i--){if(e>=STAGE_DEFS[i].days)return STAGE_DEFS[i].key;}return STAGE_DEFS[0].key;}
+function currentStageLabel(intern){var k=getCurrentStageKey(intern);var s=STAGE_DEFS.find(function(x){return x.key===k;});return s?s.label:'入职当天';}
+function lightClass(val){return val==='green'?'green':val==='yellow'?'yellow':val==='red'?'red':'';}
+function lightLabel(val){return val==='green'?'绿灯':val==='yellow'?'黄灯':val==='red'?'红灯':'未完成';}
+
+function defaultData(){var t=new Date();var a=function(d){var dt=new Date(t);dt.setDate(dt.getDate()-d);return dt.toISOString().split('T')[0];};
+return{interns:[
+{id:1,name:'张明远',gender:'男',school:'清华大学',education:'硕士',major:'计算机科学与技术',dept:'平台产品部',dept2:'增长产品组',dept3:'用户增长方向',supervisor:'王磊',mentor:'王磊',onboard:a(130),endDate:a(-50),project:'用户增长项目',goals:'1.负责版本需求全流程跟进\n2.完成2次迭代需求文档编写\n3.搭建项目数据看板',status:'正常',stages:{d0:'green',w1:'green',w2:'green',w3:'green',w4:'green',mid:'green',w6:'green',w8:'green',def:'green'},notes:{def:'答辩通过，产出扎实'}},
+{id:2,name:'李雨桐',gender:'女',school:'北京大学',education:'硕士',major:'数据科学',dept:'数据产品部',dept2:'数据平台组',dept3:'',supervisor:'赵雪',mentor:'赵雪',onboard:a(125),endDate:a(-55),project:'数据平台优化',goals:'1.梳理数据需求评审流程\n2.优化数据看板工具\n3.完成用户调研报告',status:'正常',stages:{d0:'green',w1:'green',w2:'green',w3:'green',w4:'green',mid:'green',w6:'green',w8:'green',def:'green'},notes:{def:'数据能力突出'}},
+{id:3,name:'王子轩',gender:'男',school:'浙江大学',education:'本科',major:'信息管理',dept:'用户产品部',dept2:'体验设计组',dept3:'',supervisor:'陈刚',mentor:'陈刚',onboard:a(110),endDate:a(-40),project:'用户体验优化',goals:'1.完成竞品分析报告\n2.输出2个功能优化方案\n3.跟进UED设计迭代',status:'有风险',stages:{d0:'green',w1:'green',w2:'green',w3:'green',w4:'green',mid:'yellow',w6:'yellow',w8:'',def:''},notes:{mid:'Review待改进：执行力不足'}},
+{id:4,name:'赵思琪',gender:'女',school:'上海交通大学',education:'硕士',major:'工商管理',dept:'商业产品部',dept2:'广告产品组',dept3:'投放方向',supervisor:'王磊',mentor:'王磊',onboard:a(118),endDate:a(-48),project:'广告投放系统',goals:'1.熟悉广告投放流程\n2.完成需求文档\n3.参与需求评审',status:'正常',stages:{d0:'green',w1:'green',w2:'green',w3:'green',w4:'green',mid:'green',w6:'green',w8:'green',def:'green'},notes:{}},
+{id:5,name:'孙浩然',gender:'男',school:'复旦大学',education:'本科',major:'软件工程',dept:'平台产品部',dept2:'效率工具组',dept3:'',supervisor:'李芳',mentor:'李芳',onboard:a(130),endDate:a(-50),project:'内部工具建设',goals:'1.搭建自动化报表\n2.优化项目管理工具\n3.输出使用手册',status:'正常',stages:{d0:'green',w1:'green',w2:'green',w3:'green',w4:'green',mid:'green',w6:'green',w8:'green',def:'green'},notes:{def:'工具建设产出显著'}},
+{id:6,name:'周晓晨',gender:'女',school:'南京大学',education:'硕士',major:'统计学',dept:'数据产品部',dept2:'数据治理组',dept3:'',supervisor:'赵雪',mentor:'赵雪',onboard:a(105),endDate:a(-35),project:'数据治理项目',goals:'1.梳理数据资产清单\n2.完成数据质量报告\n3.参与治理方案设计',status:'正常',stages:{d0:'green',w1:'green',w2:'green',w3:'green',w4:'green',mid:'green',w6:'green',w8:'yellow',def:''},notes:{w8:'进度偏慢'}},
+{id:7,name:'吴天宇',gender:'男',school:'武汉大学',education:'本科',major:'电子信息',dept:'搜索产品部',dept2:'搜索算法组',dept3:'',supervisor:'刘洋',mentor:'刘洋',onboard:a(95),endDate:a(-25),project:'搜索体验优化',goals:'1.分析搜索漏斗\n2.输出优化方案\n3.跟进AB实验',status:'正常',stages:{d0:'green',w1:'green',w2:'green',w3:'green',w4:'green',mid:'green',w6:'green',w8:'green',def:''},notes:{}},
+{id:8,name:'陈雨晴',gender:'女',school:'中山大学',education:'硕士',major:'心理学',dept:'用户产品部',dept2:'用户研究组',dept3:'',supervisor:'陈刚',mentor:'陈刚',onboard:a(88),endDate:a(-18),project:'用户研究专项',goals:'1.完成用户访谈\n2.输出用研报告\n3.推动体验优化项落地',status:'正常',stages:{d0:'green',w1:'green',w2:'green',w3:'green',w4:'green',mid:'green',w6:'green',w8:'',def:''},notes:{}}
+],nextId:9};}
+
+function loadData(){try{var s=localStorage.getItem(STORAGE_KEY);if(s){var d=JSON.parse(s);if(d.interns){
+    // 数据迁移：为旧数据补充新字段默认值
+    d.interns.forEach(function(i){
+        if(i.gender===undefined)i.gender='';
+        if(i.education===undefined)i.education='';
+        if(i.major===undefined)i.major='';
+        if(i.dept2===undefined)i.dept2='';
+        if(i.dept3===undefined)i.dept3='';
+        if(i.supervisor===undefined)i.supervisor='';
+        if(i.endDate===undefined)i.endDate='';
+    });
+    return d;
+}}}catch(e){}var d=defaultData();saveData(d);return d;}
+
+function saveData(d){if(d)data=d;localStorage.setItem(STORAGE_KEY,JSON.stringify(data));}
+function renderAll(){renderOverview();renderRisk();renderWeeklyReport();showAlertBanner();}
+
+var tt;function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(function(){t.classList.remove('show');},2000);}
+function openModal(id){document.getElementById(id).classList.add('show');}
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+
+document.getElementById('navTabs').addEventListener('click',function(e){if(e.target.classList.contains('tab')){document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});e.target.classList.add('active');document.querySelectorAll('.content').forEach(function(c){c.classList.remove('active');});document.getElementById(e.target.dataset.tab).classList.add('active');if(e.target.dataset.tab==='tab-risk')renderRisk();if(e.target.dataset.tab==='tab-weekly-report')renderWeeklyReport();}});
+
+function toggleSettings(){document.getElementById('settingsBar').classList.toggle('show');if(document.getElementById('settingsBar').classList.contains('show'))renderSettings();}
+function renderSettings(){document.getElementById('settingsStages').innerHTML=STAGE_DEFS.map(function(s,i){return'<div class="stage-edit"><span>#'+(i+1)+'</span><input value="'+s.label+'" onchange="STAGE_DEFS['+i+'].label=this.value;saveStages();renderOverview();"><input type="number" value="'+s.days+'" onchange="STAGE_DEFS['+i+'].days=parseInt(this.value)||0;saveStages();renderOverview();"><span>天</span><button style="color:var(--red);border:none;background:none;font-size:14px;cursor:pointer;" onclick="removeStage('+i+')">&times;</button></div>';}).join('');}
+function removeStage(idx){if(STAGE_DEFS.length<=1){toast('至少保留一个阶段');return;}STAGE_DEFS.splice(idx,1);saveStages();renderSettings();renderOverview();toast('阶段已删除');}
+
+function getFilteredInterns(){
+    var s=(document.getElementById('searchInput')?document.getElementById('searchInput').value:'').toLowerCase();
+    var fs=document.getElementById('filterStage')?document.getElementById('filterStage').value:'';
+    var fd=document.getElementById('filterDept')?document.getElementById('filterDept').value:'';
+    var fm=document.getElementById('filterMentor')?document.getElementById('filterMentor').value:'';
+    var fe=document.getElementById('filterEducation')?document.getElementById('filterEducation').value:'';
+    var fst=document.getElementById('filterStatus')?document.getElementById('filterStatus').value:'';
+    var fl=document.getElementById('filterLight')?document.getElementById('filterLight').value:'';
+    return data.interns.filter(function(i){
+        if(s&&!(i.name+i.school+i.major+i.dept+i.dept2+i.dept3+i.mentor+i.supervisor+i.project).toLowerCase().includes(s))return false;
+        if(fs&&getCurrentStageKey(i)!==fs)return false;
+        if(fd&&i.dept!==fd)return false;
+        if(fm&&i.mentor!==fm)return false;
+        if(fe&&i.education!==fe)return false;
+        if(fst&&i.status!==fst)return false;
+        if(fl){var cl=i.stages[getCurrentStageKey(i)]||'';if(cl!==fl)return false;}
+        return true;
+    });
+}
+
+function sortInterns(field){if(sortField===field)sortAsc=!sortAsc;else{sortField=field;sortAsc=true;}renderOverview();}
+function getSortedInterns(f){return f.slice().sort(function(a,b){var va=a[sortField]||'',vb=b[sortField]||'';if(sortField==='onboard'||sortField==='endDate'){va=new Date(va);vb=new Date(vb);if(isNaN(va))va=new Date(0);if(isNaN(vb))vb=new Date(0);}if(va<vb)return sortAsc?-1:1;if(va>vb)return sortAsc?1:-1;return 0;});}
+
+function renderOverview(){
+    var ss=document.getElementById('filterStage');
+    if(ss)ss.innerHTML='<option value="">全部阶段</option>'+STAGE_DEFS.map(function(s){return'<option value="'+s.key+'">'+s.label+'</option>';}).join('');
+
+    // 部门筛选
+    var fd=document.getElementById('filterDept');
+    var depts=[];data.interns.forEach(function(i){if(i.dept&&depts.indexOf(i.dept)===-1)depts.push(i.dept);});
+    if(fd){var cdv=fd.value;fd.innerHTML='<option value="">全部部门</option>'+depts.map(function(d){return'<option value="'+d+'">'+d+'</option>';}).join('');if(cdv)fd.value=cdv;}
+
+    // 导师筛选
+    var ms=document.getElementById('filterMentor');
+    var ments=[];data.interns.forEach(function(i){if(i.mentor&&ments.indexOf(i.mentor)===-1)ments.push(i.mentor);});
+    if(ms){var cv=ms.value;ms.innerHTML='<option value="">全部导师</option>'+ments.map(function(m){return'<option value="'+m+'">'+m+'</option>';}).join('');if(cv)ms.value=cv;}
+
+    var filtered=getFilteredInterns(),sorted=getSortedInterns(filtered);
+    document.getElementById('resultHint').textContent='共 '+sorted.length+' 人';
+    document.getElementById('headerStats').textContent=data.interns.length+'人 | 风险'+data.interns.filter(function(i){return i.status==='有风险';}).length+'人';
+    var rc=data.interns.filter(function(i){return i.status==='有风险';}).length;
+    var rcEl=document.getElementById('riskCount');rcEl.textContent=rc;rcEl.style.display=rc>0?'inline':'none';
+
+    document.getElementById('overviewBody').innerHTML=sorted.map(function(i){
+        var ck=getCurrentStageKey(i);
+        var sc=i.status==='正常'?'badge-success':'badge-warning';
+        var isE=expandedId===i.id;
+        var dots=STAGE_DEFS.map(function(s){var st=i.stages[s.key]||'';return'<span class="stage-dot '+lightClass(st)+'" title="'+s.label+':'+lightLabel(st)+'"></span>';}).join('');
+        // 计算剩余天数
+        var remainHtml='-';
+        if(i.endDate){
+            var rd=Math.floor((new Date(i.endDate)-new Date())/(1000*60*60*24));
+            if(rd<0)remainHtml='<span style="color:var(--gray-400);">已结束</span>';
+            else if(rd<=14)remainHtml='<span style="color:var(--red);font-weight:600;">'+rd+'天</span>';
+            else if(rd<=30)remainHtml='<span style="color:var(--yellow);">'+rd+'天</span>';
+            else remainHtml=rd+'天';
+        }
+        var rh='<tr class="'+(isE?'expanded ':'')+(i.status==='有风险'?'risk-row ':'')+'" onclick="toggleExpand('+i.id+')">';
+        rh+='<td>'+(isE?'▼':'▶')+'</td>';
+        rh+='<td><strong>'+i.name+'</strong></td>';
+        rh+='<td>'+(i.dept2||'-')+'</td>';
+        rh+='<td>'+(i.dept3||'-')+'</td>';
+        rh+='<td>'+(i.mentor||'-')+'</td>';
+        rh+='<td>'+(i.supervisor||'-')+'</td>';
+        rh+='<td>'+(i.onboard||'-')+'</td>';
+        rh+='<td>'+remainHtml+'</td>';
+        rh+='<td><span class="badge badge-info">'+currentStageLabel(i)+'</span></td>';
+        rh+='<td><span class="badge '+sc+'">'+i.status+'</span></td>';
+        rh+='<td><div class="stage-dots">'+dots+'</div></td>';
+        rh+='</tr>';
+        if(isE)rh+='<tr class="expand-row show"><td colspan="11">'+renderExpandPanel(i)+'</td></tr>';
+        return rh;
+    }).join('');
+    showAlertBanner();
+}
+
+function toggleExpand(id){if(expandedId===id){expandedId=null;}else{expandedId=id;selectedStage[id]=selectedStage[id]||getCurrentStageKey(data.interns.find(function(i){return i.id===id;}));}renderOverview();}
+function selectStage(internId,stageKey){selectedStage[internId]=stageKey;renderOverview();}
+
+function setStage(internId,stageKey,val){var i=data.interns.find(function(x){return x.id===internId;});if(!i)return;if(!i.stages)i.stages={};i.stages[stageKey]=val;autoSyncStatus(i);saveData();renderOverview();renderRisk();renderWeeklyReport();toast('灯号已更新：'+lightLabel(val)+(i._statusChanged?'，状态已自动更新':''));}
+function autoSyncStatus(intern){var prev=intern.status;var hasRed=Object.values(intern.stages||{}).indexOf('red')>=0;var hasYellow=Object.values(intern.stages||{}).indexOf('yellow')>=0;if(intern.status==='已离职'){intern._statusChanged=false;return;}if(hasRed||hasYellow){intern.status='有风险';}else{intern.status='正常';}intern._statusChanged=intern.status!==prev;}
+function saveNote(internId,stageKey,note){var i=data.interns.find(function(x){return x.id===internId;});if(!i)return;if(!i.notes)i.notes={};i.notes[stageKey]=note;saveData();}
+
+function renderExpandPanel(intern){
+    var ck=getCurrentStageKey(intern),selKey=selectedStage[intern.id]||ck;
+    var cols=STAGE_DEFS.length;
+
+    // 信息卡片
+    var genderLabel=intern.gender||'-';
+    var eduLabel=intern.education||'-';
+    var infoCard='<div class="info-card">'+
+        '<div class="info-item"><span class="info-label">性别：</span><span class="info-value">'+genderLabel+'</span></div>'+
+        '<div class="info-item"><span class="info-label">学校：</span><span class="info-value">'+(intern.school||'-')+'</span></div>'+
+        '<div class="info-item"><span class="info-label">学历：</span><span class="info-value">'+eduLabel+'</span></div>'+
+        '<div class="info-item"><span class="info-label">专业：</span><span class="info-value">'+(intern.major||'-')+'</span></div>'+
+        '<div class="info-item"><span class="info-label">一级部门：</span><span class="info-value">'+(intern.dept||'-')+'</span></div>'+
+        '<div class="info-item"><span class="info-label">二级部门：</span><span class="info-value">'+(intern.dept2||'-')+'</span></div>'+
+        '<div class="info-item"><span class="info-label">三级部门：</span><span class="info-value">'+(intern.dept3||'-')+'</span></div>'+
+        '<div class="info-item"><span class="info-label">项目：</span><span class="info-value">'+(intern.project||'-')+'</span></div>'+
+    '</div>';
+
+    // 阶段时间线
+    var nodes=STAGE_DEFS.map(function(s){
+        var st=intern.stages[s.key]||'';
+        var ds=intern.onboard?stageDate(intern.onboard,s.days):'';
+        var isSel=s.key===selKey;
+        return'<div class="stage-node '+lightClass(st)+'" onclick="event.stopPropagation();selectStage('+intern.id+',\''+s.key+'\')" style="'+(isSel?'outline:2px solid var(--primary);outline-offset:2px;border-radius:4px;':'')+'"><div class="stage-dot-big"></div><div class="stage-label">'+s.label+'</div><div class="stage-date">'+ds+'</div></div>';
+    }).join('');
+
+    var ss=STAGE_DEFS.find(function(s){return s.key===selKey;});
+    var st=intern.stages[selKey]||'';
+    var sd=intern.onboard?stageDate(intern.onboard,ss?ss.days:0):'';
+    var sn=(intern.notes&&intern.notes[selKey])?intern.notes[selKey]:'';
+    var gh=intern.goals?'<div class="goals-box"><div class="goals-title">实习目标</div>'+intern.goals.replace(/\n/g,'<br>')+'</div>':'';
+
+    return'<div class="expand-panel">'+
+        infoCard+
+        gh+
+        '<div style="font-size:12px;font-weight:600;color:var(--gray-500);margin-bottom:10px;">阶段灯号（点击节点切换）</div>'+
+        '<div class="stage-timeline" style="grid-template-columns:repeat('+cols+',1fr);">'+nodes+'</div>'+
+        '<div class="stage-detail"><div class="sd-header"><div><span class="sd-title">'+(ss?ss.label:'')+'</span><span class="sd-date"> 预期: '+sd+'</span></div>'+
+        '<div class="stage-status-btns"><button class="ss-btn '+(st==='green'?'sel-green':'')+'" onclick="event.stopPropagation();setStage('+intern.id+',\''+selKey+'\',\'green\')">绿灯</button><button class="ss-btn '+(st==='yellow'?'sel-yellow':'')+'" onclick="event.stopPropagation();setStage('+intern.id+',\''+selKey+'\',\'yellow\')">黄灯</button><button class="ss-btn '+(st==='red'?'sel-red':'')+'" onclick="event.stopPropagation();setStage('+intern.id+',\''+selKey+'\',\'red\')">红灯</button><button class="ss-btn" onclick="event.stopPropagation();setStage('+intern.id+',\''+selKey+'\',\'\')">清除</button></div></div>'+
+        '<textarea placeholder="记录该阶段的跟进备注、关键产出、问题等..." onchange="saveNote('+intern.id+',\''+selKey+'\',this.value)">'+sn+'</textarea>'+
+        '<div class="sd-actions"><button class="btn btn-outline btn-xs" onclick="event.stopPropagation();editIntern('+intern.id+')">编辑信息</button><button class="btn btn-outline btn-xs" style="color:var(--red);border-color:var(--red);" onclick="event.stopPropagation();deleteIntern('+intern.id+')">删除</button></div>'+
+        '</div></div>';
+}
+
+function renderWeeklyReport(){var s={total:data.interns.length,green:0,yellow:0,red:0,blank:0,risks:[],over:[]};var now=new Date();data.interns.forEach(function(i){var ck=getCurrentStageKey(i);var cl=i.stages[ck]||'';if(cl==='green')s.green++;else if(cl==='yellow')s.yellow++;else if(cl==='red')s.red++;else s.blank++;if(i.status==='有风险'||cl==='red'||cl==='yellow')s.risks.push({name:i.name,mentor:i.mentor||'-',stage:currentStageLabel(i),light:cl,note:(i.notes||{})[ck]||''});STAGE_DEFS.forEach(function(st){var e=Math.floor((now-new Date(i.onboard))/86400000);if(e>=st.days+5&&!(i.stages&&i.stages[st.key])&&st.key!==ck)s.over.push({name:i.name,mentor:i.mentor||'-',stage:st.label});});});
+var h='<div style="background:white;border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,0.08);padding:24px;"><h3 style="margin-bottom:16px;">每周异常汇总 '+new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric',weekday:'long'})+'</h3><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;"><div style="text-align:center;padding:16px;background:#d1fae5;border-radius:10px;"><div style="font-size:32px;font-weight:700;color:#065f46;">'+s.green+'</div><div>绿灯</div></div><div style="text-align:center;padding:16px;background:#fef3c7;border-radius:10px;"><div style="font-size:32px;font-weight:700;color:#92400e;">'+s.yellow+'</div><div>黄灯</div></div><div style="text-align:center;padding:16px;background:#fee2e2;border-radius:10px;"><div style="font-size:32px;font-weight:700;color:#991b1b;">'+s.red+'</div><div>红灯</div></div><div style="text-align:center;padding:16px;background:#f3f4f6;border-radius:10px;"><div style="font-size:32px;font-weight:700;color:#6b7280;">'+s.blank+'</div><div>未完成</div></div></div>';
+if(s.risks.length>0){h+='<h4 style="color:var(--red);margin-bottom:8px;">风险实习生</h4><table class="risk-table"><thead><tr><th>姓名</th><th>导师</th><th>阶段</th><th>灯号</th><th>备注</th></tr></thead><tbody>';s.risks.forEach(function(r){var lb=r.light==='red'?'<span class="risk-high">红灯</span>':r.light==='yellow'?'<span class="risk-mid">黄灯</span>':'<span>'+lightLabel(r.light)+'</span>';h+='<tr><td><strong>'+r.name+'</strong></td><td>'+r.mentor+'</td><td>'+r.stage+'</td><td>'+lb+'</td><td style="font-size:12px;color:var(--gray-500);">'+(r.note||'-')+'</td></tr>';});h+='</tbody></table>';}
+if(s.over.length>0){h+='<h4 style="color:var(--yellow);margin:16px 0 8px;">阶段超期</h4><table class="risk-table"><thead><tr><th>姓名</th><th>导师</th><th>阶段</th></tr></thead><tbody>';s.over.forEach(function(o){h+='<tr><td>'+o.name+'</td><td>'+o.mentor+'</td><td>'+o.stage+'</td></tr>';});h+='</tbody></table>';}
+if(s.risks.length===0&&s.over.length===0)h+='<div class="empty"><div style="font-size:48px;">OK</div><p>暂无异常</p></div>';h+='</div>';document.getElementById('weeklyReportContent').innerHTML=h;}
+
+function renderRisk(){var risks=[];data.interns.forEach(function(i){if(i.status==='有风险'){risks.push({name:i.name,mentor:i.mentor||'-',level:'高',reason:'整体风险',detail:'',action:'需重点关注'});}if(i.stages){STAGE_DEFS.forEach(function(s){if(i.stages[s.key]==='red')risks.push({name:i.name,mentor:i.mentor||'-',level:'高',reason:s.label+'红灯',detail:(i.notes||{})[s.key]||'',action:'需立即跟进'});});}});var seen={};risks=risks.filter(function(r){var k=r.name+r.reason;if(seen[k])return false;seen[k]=true;return true;});document.getElementById('riskContent').innerHTML=risks.length===0?'<div class="empty"><div style="font-size:48px;">OK</div><p>暂无风险</p></div>':'<table class="risk-table"><thead><tr><th>姓名</th><th>导师</th><th>等级</th><th>原因</th><th>说明</th><th>建议</th></tr></thead><tbody>'+risks.map(function(r){return'<tr><td><strong>'+r.name+'</strong></td><td>'+r.mentor+'</td><td><span class="'+(r.level==='高'?'risk-high':'risk-mid')+'">'+r.level+'</span></td><td>'+r.reason+'</td><td style="font-size:12px;">'+(r.detail||'-')+'</td><td>'+r.action+'</td></tr>';}).join('')+'</tbody></table>';}
+
+function showAlertBanner(){var risks=[];data.interns.forEach(function(i){if(i.status==='有风险')risks.push(i.name);STAGE_DEFS.forEach(function(s){if(i.stages&&i.stages[s.key]==='red')risks.push(i.name);});});var b=document.getElementById('alertBanner');if(risks.length>0){document.getElementById('bannerText').textContent='有'+risks.length+'项需关注：'+risks.slice(0,3).join('、')+(risks.length>3?'...':'');b.classList.add('show');}else{b.classList.remove('show');}}
+if('Notification' in window&&Notification.permission==='default')setTimeout(function(){Notification.requestPermission();},3000);
+
+function openInternModal(eid){
+    document.getElementById('internModalTitle').textContent=eid?'编辑实习生':'添加实习生';
+    document.getElementById('f_editId').value=eid||'';
+
+    // 导师提示列表
+    var ms=data.interns.map(function(i){return i.mentor;}).filter(Boolean);
+    ms=ms.filter(function(v,i,a){return a.indexOf(v)===i;});
+    document.getElementById('mentorList').innerHTML=ms.map(function(m){return'<option value="'+m+'">';}).join('');
+
+    // 主管提示列表
+    var ss=data.interns.map(function(i){return i.supervisor;}).filter(Boolean);
+    ss=ss.filter(function(v,i,a){return a.indexOf(v)===i;});
+    document.getElementById('supervisorList').innerHTML=ss.map(function(m){return'<option value="'+m+'">';}).join('');
+
+    if(eid){
+        var i=data.interns.find(function(x){return x.id===eid;});
+        if(i){
+            document.getElementById('f_name').value=i.name||'';
+            document.getElementById('f_gender').value=i.gender||'';
+            document.getElementById('f_school').value=i.school||'';
+            document.getElementById('f_education').value=i.education||'';
+            document.getElementById('f_major').value=i.major||'';
+            document.getElementById('f_onboard').value=i.onboard||'';
+            document.getElementById('f_endDate').value=i.endDate||'';
+            document.getElementById('f_dept').value=i.dept||'';
+            document.getElementById('f_dept2').value=i.dept2||'';
+            document.getElementById('f_dept3').value=i.dept3||'';
+            document.getElementById('f_supervisor').value=i.supervisor||'';
+            document.getElementById('f_mentor').value=i.mentor||'';
+            document.getElementById('f_project').value=i.project||'';
+            document.getElementById('f_goals').value=i.goals||'';
+            document.getElementById('f_status').value=i.status||'正常';
+        }
+    }else{
+        ['f_name','f_school','f_major','f_onboard','f_endDate','f_dept','f_dept2','f_dept3','f_supervisor','f_mentor','f_project','f_goals'].forEach(function(id){document.getElementById(id).value='';});
+        document.getElementById('f_gender').value='';
+        document.getElementById('f_education').value='';
+        document.getElementById('f_status').value='正常';
+    }
+    openModal('internModal');
+}
+function editIntern(id){openInternModal(id);}
+
+function saveIntern(){
+    var name=document.getElementById('f_name').value.trim(),ob=document.getElementById('f_onboard').value;
+    if(!name||!ob){toast('请填写姓名和入职日期');return;}
+    var eid=document.getElementById('f_editId').value;
+    var obj={
+        name:name,
+        gender:document.getElementById('f_gender').value,
+        school:document.getElementById('f_school').value.trim(),
+        education:document.getElementById('f_education').value,
+        major:document.getElementById('f_major').value.trim(),
+        onboard:ob,
+        endDate:document.getElementById('f_endDate').value,
+        dept:document.getElementById('f_dept').value.trim(),
+        dept2:document.getElementById('f_dept2').value.trim(),
+        dept3:document.getElementById('f_dept3').value.trim(),
+        supervisor:document.getElementById('f_supervisor').value.trim(),
+        mentor:document.getElementById('f_mentor').value.trim(),
+        project:document.getElementById('f_project').value.trim(),
+        goals:document.getElementById('f_goals').value.trim(),
+        status:document.getElementById('f_status').value
+    };
+    if(eid){
+        var idx=data.interns.findIndex(function(i){return i.id===parseInt(eid);});
+        if(idx>=0){obj.id=parseInt(eid);obj.stages=data.interns[idx].stages||{};obj.notes=data.interns[idx].notes||{};data.interns[idx]=obj;}
+    }else{obj.id=data.nextId++;obj.stages={};obj.notes={};data.interns.push(obj);}
+    saveData();closeModal('internModal');renderAll();toast(eid?'已更新':'已添加');
+}
+
+function deleteIntern(id){var i=data.interns.find(function(x){return x.id===id;});if(!confirm('确定删除'+i.name+'?'))return;data.interns=data.interns.filter(function(x){return x.id!==id;});if(expandedId===id)expandedId=null;saveData();renderAll();toast('已删除');}
+function clearAllData(){if(confirm('确定清空所有数据？')){data={interns:[],nextId:1};saveData();expandedId=null;selectedStage={};renderAll();toast('已清空');}}
+
+function exportDataJSON(){var j=JSON.stringify(data,null,2);var b=new Blob([j],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='data.json';a.click();toast('已下载');}
+
+function downloadTemplate(){
+    // 构建模板表头
+    var headers=['姓名*','性别','学校','学历','专业','一级部门','二级部门','三级部门','主管','导师','入职日期*','预计结束日期','项目','实习目标','状态'];
+    STAGE_DEFS.forEach(function(s){headers.push(s.label);});
+
+    // 示例数据行（帮助理解格式）
+    var sample={
+        '姓名*':'张三',
+        '性别':'男',
+        '学校':'XX大学',
+        '学历':'硕士',
+        '专业':'计算机科学',
+        '一级部门':'平台产品部',
+        '二级部门':'增长产品组',
+        '三级部门':'用户增长方向',
+        '主管':'李四',
+        '导师':'李四',
+        '入职日期*':'2026-06-01',
+        '预计结束日期':'2026-08-31',
+        '项目':'XX项目',
+        '实习目标':'1.完成XX需求文档\n2.参与XX迭代',
+        '状态':'正常'
+    };
+    STAGE_DEFS.forEach(function(s){sample[s.label]='';});
+
+    // 说明行
+    var noteRow={};
+    headers.forEach(function(h){noteRow[h]='';});
+    noteRow['姓名*']='（请删除本行和示例行后填写真实数据）';
+    noteRow['性别']='填写：男 或 女';
+    noteRow['学历']='填写：本科 / 硕士 / 博士 / 其他';
+    noteRow['状态']='填写：正常 或 有风险';
+    noteRow['入职日期*']='格式：YYYY-MM-DD';
+    STAGE_DEFS.forEach(function(s){noteRow[s.label]='绿灯/黄灯/红灯/留空';});
+
+    var rows=[noteRow,sample];
+    var ws=XLSX.utils.json_to_sheet(rows,{header:headers});
+    // 设置列宽
+    ws['!cols']=headers.map(function(){return {wch:16};});
+    var wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,'实习生导入模板');
+    XLSX.writeFile(wb,'实习生导入模板.xlsx');
+    toast('模板已下载，请按格式填写后导入');
+}
+
+function exportExcel(){
+    var rows=data.interns.map(function(i){
+        var r={
+            '姓名':i.name,'性别':i.gender||'','学校':i.school||'','学历':i.education||'','专业':i.major||'',
+            '一级部门':i.dept||'','二级部门':i.dept2||'','三级部门':i.dept3||'',
+            '主管':i.supervisor||'','导师':i.mentor||'',
+            '入职日期':i.onboard,'预计结束日期':i.endDate||'',
+            '项目':i.project||'','实习目标':i.goals||'','状态':i.status
+        };
+        STAGE_DEFS.forEach(function(s){r[s.label]=i.stages[s.key]||'';});
+        return r;
+    });
+    var ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,'跟踪');XLSX.writeFile(wb,'实习生阶段跟踪.xlsx');toast('导出成功');
+}
+
+function importExcel(){
+    var ipt=document.createElement('input');ipt.type='file';ipt.accept='.xlsx,.xls';
+    ipt.onchange=function(e){var f=e.target.files[0],r=new FileReader();
+    r.onload=function(ev){var wb=XLSX.read(ev.target.result,{type:'binary'});var rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);var c=0;
+    rows.forEach(function(row){if(row['姓名']){var st={},nt={};
+        STAGE_DEFS.forEach(function(s){if(row[s.label])st[s.key]=String(row[s.label]);});
+        data.interns.push({
+            id:data.nextId++,name:row['姓名'],
+            gender:row['性别']||'',school:row['学校']||'',education:row['学历']||'',major:row['专业']||'',
+            dept:row['一级部门']||'',dept2:row['二级部门']||'',dept3:row['三级部门']||'',
+            supervisor:row['主管']||'',mentor:row['导师']||'',
+            onboard:fmtDate(row['入职日期']),endDate:fmtDate(row['预计结束日期']),
+            project:row['项目']||'',goals:row['实习目标']||'',status:row['状态']||'正常',
+            stages:st,notes:nt
+        });c++;}
+    });saveData();renderAll();toast('导入'+c+'人');};
+    r.readAsBinaryString(f);};ipt.click();
+}
+function fmtDate(v){if(!v)return'';if(typeof v==='number'){var d=new Date((v-25569)*86400*1000);return d.toISOString().split('T')[0];}return String(v);}
+
+function generateReport(){
+    var t=data.interns.length;
+    var dd=data.interns.filter(function(i){var ds=STAGE_DEFS.find(function(s){return s.label==='转正答辩';});return ds&&i.stages&&i.stages[ds.key]==='green';}).length;
+    var lc={green:0,yellow:0,red:0,blank:0};
+    data.interns.forEach(function(i){var l=i.stages[getCurrentStageKey(i)]||'';lc[l]=(lc[l]||0)+1;});
+    var n=new Date().toLocaleDateString('zh-CN');
+    var h='<h2>实习生管理汇报</h2><p>'+n+' | '+t+'人 | 转正率'+Math.round(dd/t*100)+'%</p>';
+    h+='<h3>灯号分布</h3><table><tr><th>灯号</th><th>人数</th></tr>';
+    h+='<tr><td>绿灯</td><td>'+lc.green+'</td></tr><tr><td>黄灯</td><td>'+lc.yellow+'</td></tr><tr><td>红灯</td><td>'+lc.red+'</td></tr><tr><td>未完成</td><td>'+lc.blank+'</td></tr></table>';
+    h+='<h3>全员明细</h3><table><tr><th>姓名</th><th>性别</th><th>学校</th><th>学历</th><th>专业</th><th>部门</th><th>导师</th><th>主管</th><th>入职</th><th>预计结束</th><th>阶段</th><th>灯号</th><th>状态</th></tr>';
+    data.interns.forEach(function(i){
+        h+='<tr><td>'+i.name+'</td><td>'+(i.gender||'-')+'</td><td>'+(i.school||'-')+'</td><td>'+(i.education||'-')+'</td><td>'+(i.major||'-')+'</td><td>'+(i.dept||'-')+'</td><td>'+(i.mentor||'-')+'</td><td>'+(i.supervisor||'-')+'</td><td>'+(i.onboard||'-')+'</td><td>'+(i.endDate||'-')+'</td><td>'+currentStageLabel(i)+'</td><td>'+lightLabel(i.stages[getCurrentStageKey(i)]||'')+'</td><td>'+i.status+'</td></tr>';
+    });
+    h+='</table>';
+    // 按学历统计
+    var eduStat={};data.interns.forEach(function(i){var e=i.education||'未知';eduStat[e]=(eduStat[e]||0)+1;});
+    h+='<h3>学历分布</h3><table><tr><th>学历</th><th>人数</th></tr>';
+    Object.keys(eduStat).forEach(function(k){h+='<tr><td>'+k+'</td><td>'+eduStat[k]+'人</td></tr>';});
+    h+='</table>';
+    // 按部门统计
+    var deptStat={};data.interns.forEach(function(i){var d=i.dept||'未知';deptStat[d]=(deptStat[d]||0)+1;});
+    h+='<h3>部门分布</h3><table><tr><th>部门</th><th>人数</th></tr>';
+    Object.keys(deptStat).forEach(function(k){h+='<tr><td>'+k+'</td><td>'+deptStat[k]+'人</td></tr>';});
+    h+='</table>';
+    document.getElementById('reportContent').innerHTML=h;openModal('reportModal');toast('报告已生成');
+}
+function downloadReport(){var c=document.getElementById('reportContent').innerHTML;var h='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>汇报</title><style>body{font-family:"Noto Sans SC",sans-serif;padding:40px;color:#333;}table{border-collapse:collapse;width:100%;}th,td{padding:6px 10px;border:1px solid #ddd;font-size:12px;}th{background:#f9fafb;}h2{color:#6366f1;}</style></head><body>'+c+'</body></html>';var b=new Blob([h],{type:'text/html'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='汇报_'+new Date().toISOString().split('T')[0]+'.html';a.click();}
+
+function generatePopoMsg(){
+    var t=data.interns.length,r=data.interns.filter(function(i){return i.status==='有风险';}).length;
+    var dd=data.interns.filter(function(i){var ds=STAGE_DEFS.find(function(s){return s.label==='转正答辩';});return ds&&i.stages&&i.stages[ds.key]==='green';}).length;
+    var n=new Date().toLocaleDateString('zh-CN');
+    var lc={green:0,yellow:0,red:0,blank:0};
+    data.interns.forEach(function(i){var l=i.stages[getCurrentStageKey(i)]||'';lc[l]=(lc[l]||0)+1;});
+    var msg='【27届PM实习生阶段跟踪 - '+n+'】\n================================================\n\n';
+    msg+='综述：'+t+'人 | 正常 '+data.interns.filter(function(i){return i.status==='正常';}).length+'人 | 风险 '+r+'人 | 已答辩 '+dd+'人\n';
+    msg+='灯号：绿灯 '+lc.green+' | 黄灯 '+lc.yellow+' | 红灯 '+lc.red+' | 未完成 '+lc.blank+'\n';
+    msg+='转正率：'+Math.round(dd/t*100)+'%\n';
+    var ri=data.interns.filter(function(i){return i.status==='有风险'||Object.values(i.stages||{}).indexOf('red')>=0;});
+    if(ri.length>0){msg+='\n风险关注：\n';ri.forEach(function(i){msg+='  !! '+i.name+'（'+(i.mentor||'-')+'）\n';});}
+    msg+='\n================================================\n由阶段跟踪看板自动生成';
+    document.getElementById('popoMsg').value=msg;openModal('popoModal');
+}
+function copyPopoMsg(){var ta=document.getElementById('popoMsg');ta.select();document.execCommand('copy');toast('已复制');}
+
+function exportArchive(){var ds=new Date().toISOString().split('T')[0];downloadArchiveHTML(ds);setTimeout(function(){downloadArchiveExcel(ds);},500);toast('归档已生成（HTML+Excel）');}
+function downloadArchiveHTML(ds){
+    var t=data.interns.length;
+    var cards=data.interns.map(function(i){
+        var cl=currentStageLabel(i);
+        var cr=i.stages[getCurrentStageKey(i)]||'';
+        var done=STAGE_DEFS.filter(function(s){return i.stages&&i.stages[s.key]==='green';}).length;
+        var sr=STAGE_DEFS.map(function(s){
+            var st=i.stages&&i.stages[s.key]?i.stages[s.key]:'blank';
+            var nt=(i.notes||{})[s.key]||'';
+            var le=st==='green'?'G':st==='yellow'?'Y':st==='red'?'R':'-';
+            return'<tr><td>'+s.label+'</td><td>'+(i.onboard?stageDate(i.onboard,s.days):'')+'</td><td>'+le+' '+lightLabel(st)+'</td><td style="font-size:12px;">'+(nt||'-')+'</td></tr>';
+        }).join('');
+        return'<div style="background:white;border:1px solid #e5e7eb;border-radius:12px;padding:20px;margin-bottom:16px;">'+
+            '<div><h3 style="margin:0;">'+i.name+'</h3><span style="font-size:12px;color:#666;">入职:'+(i.onboard||'-')+' | 预计结束:'+(i.endDate||'-')+' | '+cl+'('+lightLabel(cr)+')</span></div>'+
+            '<div style="font-size:12px;color:#666;margin:8px 0;">'+(i.gender||'-')+' | '+(i.school||'-')+' | '+(i.education||'-')+' | '+(i.major||'-')+'</div>'+
+            '<div style="font-size:12px;color:#666;margin:8px 0;">'+(i.dept||'-')+' | '+(i.dept2||'-')+' | '+(i.dept3||'-')+' | 导师:'+(i.mentor||'-')+' | 主管:'+(i.supervisor||'-')+'</div>'+
+            '<div style="font-size:12px;color:#666;margin:8px 0;">项目:'+(i.project||'-')+'</div>'+
+            '<div>完成:'+done+'/'+STAGE_DEFS.length+' | 状态:'+i.status+'</div>'+
+            '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;"><tr style="background:#f9fafb;"><th>阶段</th><th>日期</th><th>灯号</th><th>备注</th></tr>'+sr+'</table></div>';
+    }).join('');
+    var h='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>归档报告 - '+ds+'</title><style>body{font-family:"Noto Sans SC",sans-serif;background:#f0f2f5;padding:24px;color:#333;}.page{max-width:1000px;margin:0 auto;}h3{margin:0;}table{border-collapse:collapse;}th,td{padding:6px 10px;border:1px solid #e5e7eb;}th{background:#f9fafb;text-align:left;}@media print{body{background:white;padding:0;}}</style></head><body><div class="page"><h1 style="color:#6366f1;">归档报告</h1><p>'+ds+' | '+t+'人</p>'+cards+'</div></body></html>';
+    var b=new Blob(['\ufeff'+h],{type:'text/html'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='归档报告_'+ds+'.html';a.click();
+}
+function downloadArchiveExcel(ds){
+    var rows=[];data.interns.forEach(function(i){
+        var r={
+            '姓名':i.name,'性别':i.gender||'','学校':i.school||'','学历':i.education||'','专业':i.major||'',
+            '一级部门':i.dept||'','二级部门':i.dept2||'','三级部门':i.dept3||'',
+            '主管':i.supervisor||'','导师':i.mentor||'',
+            '入职':i.onboard||'','预计结束':i.endDate||'',
+            '项目':i.project||'','状态':i.status,
+            '当前阶段':currentStageLabel(i),'当前灯号':lightLabel(i.stages[getCurrentStageKey(i)]||''),
+            '完成':STAGE_DEFS.filter(function(s){return i.stages&&i.stages[s.key]==='green';}).length,'总阶段':STAGE_DEFS.length
+        };
+        STAGE_DEFS.forEach(function(s){r[s.label+'(灯号)']=lightLabel((i.stages||{})[s.key]||'');r[s.label+'(备注)']=(i.notes||{})[s.key]||'';});
+        rows.push(r);
+    });
+    var ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,'归档');XLSX.writeFile(wb,'归档_'+ds+'.xlsx');
+}
+
+data=loadData();if(!data.interns||data.interns.length===0){data=defaultData();saveData(data);}
+renderAll();renderSettings();
+document.addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&e.key==='f'){e.preventDefault();document.getElementById('searchInput').focus();}});
+</script>
+</body>
+</html>
